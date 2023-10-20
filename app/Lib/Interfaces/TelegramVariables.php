@@ -43,19 +43,21 @@ class TelegramVariables
         }
 
         $chat_id = $this->chat_id;
-        $user = Cache::remember('useraccount' . $this->chat_id, now()->addSeconds(20), function () use ($chat_id,$name,$username) {
-            return Account::query()->firstOrCreate(['chat_id' => $chat_id], [
-                'name' => " - ",
-                'admin'=>0,
-            ]);
-        });
-        if (isset($username) && $username!="-"){
-            $user->username = $username;
-            $user->name = $name;
-            $user->save();
-        }
-        $this->user = $user;
+        if (!$this->group) {
 
+            $user = Cache::remember('useraccount' . $this->chat_id, now()->addSeconds(20), function () use ($chat_id, $name, $username) {
+                return Account::query()->firstOrCreate(['chat_id' => $chat_id], [
+                    'name' => " - ",
+                    'admin' => 0,
+                ]);
+            });
+            if (isset($username) && $username != "-") {
+                $user->username = $username;
+                $user->name = $name;
+                $user->save();
+            }
+            $this->user = $user;
+        }
 
     }
 

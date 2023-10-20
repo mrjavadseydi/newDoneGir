@@ -15,7 +15,8 @@ class TelegramVariables
         $this->update = $update;
         $this->message_type = messageType($update);
         $this->group = (isset($this->update['message']['chat']['type']) && ($this->update['message']['chat']['type'] == "supergroup" || $this->update['message']['chat']['type'] == "group"));
-
+        $name = " -";
+        $username = "-";
         if ($this->message_type == "callback_query") {
             $this->data = $update["callback_query"]['data'];
             $this->chat_id = $update["callback_query"]['message']['chat']['id'];
@@ -42,13 +43,13 @@ class TelegramVariables
         }
 
         $chat_id = $this->chat_id;
-        $user = Cache::remember('useraccount' . $this->chat_id, now()->addSeconds(20), function () use ($chat_id) {
+        $user = Cache::remember('useraccount' . $this->chat_id, now()->addSeconds(20), function () use ($chat_id,$name,$username) {
             return Account::query()->firstOrCreate(['chat_id' => $chat_id], [
                 'name' => " - ",
                 'admin'=>0,
             ]);
         });
-        if (isset($username)) {
+        if (isset($username) && $username!="-"){
             $user->username = $username;
             $user->name = $name;
             $user->save();

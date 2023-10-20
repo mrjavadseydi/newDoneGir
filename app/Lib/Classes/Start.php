@@ -7,7 +7,7 @@ class Start extends TelegramOperator
 
     public function initCheck()
     {
-        return ($this->telegram->message_type=="message"&&$this->telegram->text=="/start");
+        return ($this->telegram->message_type=="message"&&$this->telegram->text=="/start" && !$this->telegram->group);
     }
 
     public function handel()

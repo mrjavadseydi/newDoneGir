@@ -7,13 +7,15 @@ use Illuminate\Support\Facades\Cache;
 
 class TelegramVariables
 {
-    public $message_type, $data, $text, $chat_id, $from_id;
+    public $message_type, $data, $text, $chat_id, $from_id, $message_id, $reply_to_message,$update,$group;
     public $user = null;
 
     public function __construct($update)
     {
         $this->update = $update;
         $this->message_type = messageType($update);
+        $this->group = (isset($this->update['message']['chat']['type']) && ($this->update['message']['chat']['type'] == "supergroup" || $this->update['message']['chat']['type'] == "group"));
+
         if ($this->message_type == "callback_query") {
             $this->data = $update["callback_query"]['data'];
             $this->chat_id = $update["callback_query"]['message']['chat']['id'];
@@ -46,7 +48,6 @@ class TelegramVariables
         if (isset($username)) {
             $user->username = $username;
             $user->account_name = $name;
-//        $user->name = $name;
             $user->save();
         }
         $this->user = $user;

@@ -93,9 +93,60 @@ if (!function_exists('messageType')) {
     }
 }
 function devLog($update){
-    sendMessage([
-        'chat_id'=>1389610583,
-        'text'=>print_r($update,true)
-    ]);
+    $text = print_r($update,true);
+    ///if lenght is bigger than 4096 split it
+    /// and send it in multiple message
+    $text = str_split($text,4096);
+    foreach ($text as $t){
+        sendMessage([
+            'chat_id'=>1389610583,
+            'text'=>$t
+        ]);
+    }
+//    sendMessage([
+//        'chat_id'=>1389610583,
+//        'text'=>
+//    ]);
 }
 
+
+
+if (!function_exists('shotKey')) {
+    function shotKey($id)
+    {
+        $arr = [
+            [
+                'text' => "⚠️حذف از لیست",
+                'callback_data' => "removeshot_" . $id
+            ],
+            [
+                'text' => '🚫حذف و بلاک',
+                'callback_data' => "removeandblock_" . $id
+            ]
+        ];
+        return keyboard::make([
+            'inline_keyboard' => [
+                $arr
+            ],
+        ]);
+    }
+}
+
+
+
+if (!function_exists('unblockUser')) {
+    function unblockUser($id)
+    {
+        $arr = [
+            [
+                'text' => "♻️حذف از لیست سیاه",
+                'callback_data' => "unblock_" . $id
+            ]
+        ];
+        return keyboard::make([
+            'inline_keyboard' => [
+                $arr
+            ],
+        ]);
+    }
+}

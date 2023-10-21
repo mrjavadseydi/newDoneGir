@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Cache;
 
 class TelegramVariables
 {
-    public $message_type, $data, $text, $chat_id, $from_id, $message_id, $reply_to_message,$update,$group;
+    public $message_type, $data, $text, $chat_id, $from_id, $message_id, $reply_to_message,$update,$group,$reply_to_message_id;
     public $user = null;
 
     public function __construct($update)
@@ -37,13 +37,14 @@ class TelegramVariables
             $this->chat_id = $update['message']['chat']['id'] ?? "";
             $this->from_id = $update['message']['from']['id'] ?? "";
             $this->message_id = $update['message']['message_id'] ?? "";
-            $this->reply_to_message = $update['message']['reply_to_message']['message_id'] ?? "";
+            $this->reply_to_message = $update['message']['reply_to_message'] ?? "";
+            $this->reply_to_message_id = $update['message']['reply_to_message']['message_id'] ?? "";
             $username = $update['message']['from']['username'] ?? "";
             $name = $update['message']['from']['first_name'] ?? "";
         }
 
         $chat_id = $this->chat_id;
-        if (!$this->group) {
+        if (!$this->group && $this->message_type != "callback_query") {
 
             $user = Cache::remember('useraccount' . $this->chat_id, now()->addSeconds(20), function () use ($chat_id, $name, $username) {
                 return Account::query()->firstOrCreate(['chat_id' => $chat_id], [

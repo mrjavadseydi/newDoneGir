@@ -9,5 +9,8 @@ class Group extends Model
 {
     use HasFactory;
     protected $guarded = [];
+    public function shots(){
+        return $this->hasMany(Shot::class);
+    }
 
 }

@@ -20,6 +20,7 @@ class TelegramVariables
         if ($this->message_type == "callback_query") {
             $this->data = $update["callback_query"]['data'];
             $this->chat_id = $update["callback_query"]['message']['chat']['id'];
+            $this->from_id = $update["callback_query"]['from']['id'];
             $this->message_id = $update["callback_query"]["message"]['message_id'];
             $this->text = $update["callback_query"]['message']['text'] ?? "";
 //            $username = $update["callback_query"]['from']['username'];
@@ -44,10 +45,12 @@ class TelegramVariables
         }
 
         $chat_id = $this->chat_id;
-        if (!$this->group && $this->message_type != "callback_query") {
+        $from_id = $this->from_id;
+//        devLog($from_id);
+//        if (!$this->group ) {
 
-            $user = Cache::remember('useraccount' . $this->chat_id, now()->addSeconds(20), function () use ($chat_id, $name, $username) {
-                return Account::query()->firstOrCreate(['chat_id' => $chat_id], [
+            $user = Cache::remember('useraccount' . $this->from_id, now()->addSeconds(20), function () use ($from_id, $name, $username) {
+                return Account::query()->firstOrCreate(['chat_id' => $from_id], [
                     'name' => " - ",
                     'admin' => 0,
                 ]);
@@ -58,7 +61,7 @@ class TelegramVariables
                 $user->save();
             }
             $this->user = $user;
-        }
+//        }
 
     }
 

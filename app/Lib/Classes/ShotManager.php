@@ -11,6 +11,9 @@ class ShotManager extends TelegramOperator
     public $shot_id;
     public function initCheck()
     {
+        if (!$this->telegram->user->admin){
+            return false;
+        }
         if ($this->telegram->message_type == "callback_query" ) {
             $ex = explode("_", $this->telegram->data);
             if ($ex[0] == "removeshot" || $ex[0] == "removeandblock" ) {

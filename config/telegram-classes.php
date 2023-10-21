@@ -14,6 +14,11 @@ return[
             \App\Lib\Classes\GroupCommands::class,
         ],
         2=>[
+            \App\Lib\Classes\AdminManagment\AddAdmin::class,
+            \App\Lib\Classes\AdminManagment\AdminList::class,
+            \App\Lib\Classes\AdminManagment\ConfirmDeleteAdmin::class,
+            \App\Lib\Classes\AdminManagment\DeleteAdmin::class,
+            \App\Lib\Classes\AdminManagment\StoreAdmin::class
 
         ],
         3=>[

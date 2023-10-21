@@ -11,6 +11,9 @@ class GroupManager extends TelegramOperator
 
     public function initCheck()
     {
+        if (!$this->telegram->user->admin){
+            return false;
+        }
         $ex = [];
         if ($this->telegram->message_type == "message") {
             $ex = explode("\n", $this->telegram->text);
@@ -92,9 +95,13 @@ class GroupManager extends TelegramOperator
         $text .= "💶 <b>Price</b> :<code>" . ($this->telegram->text * $price) - $group->subtraction . "</code> Rial \n";
         $text .= "💳 <b>Card Number</b> : \n <code>" . $cardNumber . "</code>\n";
         $text .= "🏦 <b>Sheba Number</b>: <code>" . $shaba . "</code>\n";
-        $text .= "➖➖➖<b> Description </b>➖➖➖ \n";
         $caption = $this->replaceCaption($this->telegram->reply_to_message['caption']);
-        $text .= $this->extractName($caption) . "\n";
+
+        if ($group->show_name){
+            $text .= "➖➖➖<b> Description </b>➖➖➖ \n";
+            $text .= $this->extractName($caption) . "\n";
+        }
+
         $shot = Shot::query()->create([
             'group_id' => $group->id,
             'user_chat_id' => $this->telegram->reply_to_message['from']['id'],

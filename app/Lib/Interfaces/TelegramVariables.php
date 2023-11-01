@@ -43,6 +43,9 @@ class TelegramVariables
             $username = $update['message']['from']['username'] ?? "";
             $name = $update['message']['from']['first_name'] ?? "";
         }
+        if (isset($this->text) && !empty($this->text) && $this->text != null) {
+            $this->text = convertPersianToEnglish($this->text);
+        }
 
         $chat_id = $this->chat_id;
         $from_id = $this->from_id;

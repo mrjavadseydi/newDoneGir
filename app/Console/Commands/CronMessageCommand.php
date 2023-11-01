@@ -31,17 +31,33 @@ class CronMessageCommand extends Command
         $list = Cache::get('cron_list');
 //        devLog($list);
         $current_min = date('i');
-        foreach ($list as $chat_id => $val){
-            if ($current_min%$val['min']===0){
-                copyMessage([
-                    'chat_id'=>$chat_id,
-                    'from_chat_id'=>$chat_id,
-                    'message_id'=>$val['message_id']
+        if (Cache::has('cron_delete')) {
+            foreach (Cache::get('cron_delete') as $data) {
+                deleteMessage([
+                    'chat_id' => $data['chat_id'],
+                    'message_id' => $data['message_id']
                 ]);
-            }else{
+            }
+        }
+        $data = [];
+        foreach ($list as $chat_id => $val) {
+            if ($current_min % $val['min'] === 0) {
+                $res = copyMessage([
+                    'chat_id' => $chat_id,
+                    'from_chat_id' => $chat_id,
+                    'message_id' => $val['message_id']
+                ]);
+//                if ($res['ok']){
+                $data[] = [
+                    'chat_id' => $chat_id,
+                    'message_id' => $res['message_id']
+                ];
+//                }
+            } else {
                 print_r("not yet \n");
             }
         }
+        Cache::put('cron_delete', $data, now()->addMinutes(5));
 
         return Command::SUCCESS;
     }

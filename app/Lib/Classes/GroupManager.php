@@ -11,77 +11,137 @@ class GroupManager extends TelegramOperator
 
     public function initCheck()
     {
-        if (!$this->telegram->user->admin){
+        if (!$this->telegram->user->admin) {
             return false;
         }
         $ex = [];
         if ($this->telegram->message_type == "message") {
             $ex = explode("\n", $this->telegram->text);
         }
+        if ($this->telegram->group &&
+            $this->telegram->reply_to_message_id != "" && ((is_numeric($this->telegram->text) ||
+                (
+                    count($ex) == 2 && is_numeric($ex[0])
+                    && strpos($ex[1], '#') === 0))) &&
+            (!$this->cardNumExist())
+
+        ) {
+
+
+            $a = sendMessage([
+                'chat_id' => $this->telegram->chat_id,
+                'text' => '⚠️اطلاعات این پیام قابل مشاهده نیست لطفا روی شماره کارت ریپلای کنید'
+            ]);
+//            deleteMessage([
+//                'chat_id' => $this->telegram->chat_id,
+//                'message_id' => $a['message_id']
+//
+//            ]);
+            return false;
+        }
         return ($this->telegram->group && $this->telegram->reply_to_message_id != "" &&
-            $this->telegram->message_type == "message" && isset($this->telegram->reply_to_message['caption'])
+            $this->telegram->message_type == "message" && ($this->cardNumExist())
             && ((is_numeric($this->telegram->text) ||
-                (count($ex) == 2 && is_numeric($ex[0]) && strpos($ex[1],'#')===0)) ));
+                (count($ex) == 2 && is_numeric($ex[0]) && strpos($ex[1], '#') === 0))));
     }
 
     public function handel()
     {
+        if (isset($this->telegram->reply_to_message['text'])) {
+            $this->telegram->reply_to_message['caption'] = $this->telegram->reply_to_message['text'];
+        }
         $ex = explode("\n", $this->telegram->text);
         $group = \App\Models\Group::query()->where('chat_id', $this->telegram->chat_id)->first();
-
+        if (!$group) {
+            return false;
+        }
         if (count($ex) == 2) {
             $this->telegram->text = $ex[0];
-            $banner = str_replace("#",'',$ex[1]);
-            $prices = json_decode($group->prices,true);
-            if (isset($prices[$banner])){
+            $banner = str_replace("#", '', $ex[1]);
+            $prices = json_decode($group->prices, true);
+            if (isset($prices[$banner])) {
                 $price = $prices[$banner];
-            }else{
+            } else {
                 return sendMessage([
-                    'chat_id'=>$this->telegram->chat_id,
-                    'text'=>"قیمت بنر وارد شده در لیست قیمت ها وجود ندارد"
+                    'chat_id' => $this->telegram->chat_id,
+                    'text' => "قیمت بنر وارد شده در لیست قیمت ها وجود ندارد"
                 ]);
             }
-        }else{
+        } else {
             $price = $group->default_price;
         }
-
-
+        $caption = $this->replaceCaption($this->telegram->reply_to_message['caption']);
 
         $pattern = '/@[\w\d._]+/';
-        preg_match_all($pattern, $this->telegram->reply_to_message['caption'], $matches);
+        $ready_caption = str_replace('http://instagram.com/', '@', strtolower($this->telegram->reply_to_message['caption']));
+        $ready_caption = str_replace('https://instagram.com/', '@', strtolower($ready_caption));
+        $ready_caption = str_replace('https://www.instagram.com/', '@', strtolower($ready_caption));
+        $ready_caption = str_replace('http://www.instagram.com/', '@', strtolower($ready_caption));
+        $ready_caption = str_replace('www.instagram.com/', '@', strtolower($ready_caption));
+        $ready_caption = str_replace('instagram.com/', '@', strtolower($ready_caption));
+        $e2t = explode("\n", $ready_caption);
+        $ready_caption = "";
+        $cardNumber = "";
+        $shaba = "";
+        foreach ($e2t as $t) {
+            if (strlen(str_replace(' ', '', $t)) == 26) {
+                $shaba = str_replace(' ', '', $t);
+                if (strpos(strtoupper($shaba), 'IR') === false) {
+                    $shaba = "";
+                }
+            } elseif (strlen(str_replace(' ', '', $t)) == 24) {
+                $shaba = "IR" . str_replace(' ', '', $t);
+                if (!is_numeric(str_replace(' ', '', $t))) {
+                    $shaba = "";
+                }
+            } elseif (strlen($t) == 16) {
+                $cardNumber = str_replace(' ', '', $t);
+            } elseif (strlen($t) > 3) {
+                $ready_caption .= '@' . $t . "\n";
+            }
 
+        }
+        $ready_caption = str_replace('@@', '@', strtolower($ready_caption));
+        if ($cardNumber == "") {
+            $cardPattern = '/\d{16}/';
+            preg_match($cardPattern, str_replace(' ', '', $this->telegram->reply_to_message['caption']), $cardMatches);
+            if (isset($cardMatches[0])) {
+                $cardNumber = $cardMatches[0];
+            } else {
+                return sendMessage([
+                    'chat_id' => $this->telegram->chat_id,
+                    'text' => "شماره کارت در پیام یافت نشد"
+                ]);
+            }
+        }
+        if ($shaba == "") {
+            $shabaPattern = '/IR\d{24}/';
+            preg_match($shabaPattern, strtoupper(str_replace(' ', '', $this->telegram->reply_to_message['caption'])), $shabaMatches);
+            if (isset($shabaMatches[0])) {
+                $shaba = $shabaMatches[0];
+
+            } else {
+                return sendMessage([
+                    'chat_id' => $this->telegram->chat_id,
+                    'text' => "شماره شبا در پیام یافت نشد"
+                ]);
+            }
+        }
+        preg_match_all($pattern, $ready_caption, $matches);
         $tags = $matches[0];
         $text = "";
-        if (count($tags) == 0) {
-            return sendMessage([
-                'chat_id' => $this->telegram->chat_id,
-                'text' => "در توضیحات پست شما تگی یافت نشد"
-            ]);
-        }
+        $warnings = "";
         foreach ($tags as $tag) {
+            ///search for duplicates tags in database
+            $dup = Shot::query()->where('group_id', $group->id)->where('pages', 'like', '%"' . $tag . '"%')->first();
+            if ($dup) {
+                $warnings .= "⚠️ تگ " . $tag . " قبلا در این گروه استفاده شده است \n";
+            }
             $text .= "🆔" . $tag . "\n";
         }
         $text .= "\n";
-        $shabaPattern = '/IR\d{24}/';
-        $cardPattern = '/\d{16}/';
+        $text .= $warnings . "\n";
 
-        preg_match($shabaPattern, $this->telegram->reply_to_message['caption'], $shabaMatches);
-        preg_match($cardPattern, $this->telegram->reply_to_message['caption'], $cardMatches);
-        if (!isset($shabaMatches[0])) {
-            return sendMessage([
-                'chat_id' => $this->telegram->chat_id,
-                'text' => "شبا در توضیحات پست شما یافت نشد"
-            ]);
-        }
-        if (!isset($cardMatches[0])) {
-            return sendMessage([
-                'chat_id' => $this->telegram->chat_id,
-                'text' => "شماره کارت در توضیحات پست شما یافت نشد"
-            ]);
-        }
-
-        $shaba = $shabaMatches[0];
-        $cardNumber = $cardMatches[0];
         $block_list = BlockList::query()->where('card_number', $cardNumber)->orWhere('shaba', $shaba)->first();
         if ($block_list) {
             return sendMessage([
@@ -92,12 +152,11 @@ class GroupManager extends TelegramOperator
             ]);
         }
         $text .= "📄 <b>Value</b> :<code> ( " . $this->telegram->text . " * " . $price . " ) - " . $group->subtraction . "</code>\n";
-        $text .= "💶 <b>Price</b> :<code>" . ($this->telegram->text * $price) - $group->subtraction . "</code> Rial \n";
+        $text .= "💶 <b>Price</b> :<code>" . number_format((($this->telegram->text * $price) - $group->subtraction)) . "</code> Toman \n";
         $text .= "💳 <b>Card Number</b> : \n <code>" . $cardNumber . "</code>\n";
         $text .= "🏦 <b>Sheba Number</b>: <code>" . $shaba . "</code>\n";
-        $caption = $this->replaceCaption($this->telegram->reply_to_message['caption']);
 
-        if ($group->show_name){
+        if ($group->show_name) {
             $text .= "➖➖➖<b> Description </b>➖➖➖ \n";
             $text .= $this->extractName($caption) . "\n";
         }
@@ -138,7 +197,7 @@ class GroupManager extends TelegramOperator
 
             // Check if the line contains a name
             if (preg_match('/^[\p{L}\p{M}\']+[\p{Zs}\p{P}]+[\p{L}\p{M}\']+$/u', $name)) {
-                if (strlen($name) < 10) {
+                if (strlen($name) < 5) {
                     continue;
                 }
                 return $name;
@@ -158,6 +217,23 @@ class GroupManager extends TelegramOperator
         $text = str_replace('به نام', '', $text);
         $text = str_replace('حساب', '', $text);
         return $text;
+    }
+
+    private function cardNumExist()
+    {
+        $text = "";
+        if (isset($this->telegram->reply_to_message['caption'])) {
+            $text = $this->telegram->reply_to_message['caption'];
+        } elseif (isset($this->telegram->reply_to_message['text'])) {
+            $text = $this->telegram->reply_to_message['text'];
+        } else {
+            return false;
+        }
+
+        $cardPattern = '/\d{16}/';
+
+        preg_match($cardPattern, (str_replace(' ', '', $text)), $cardMatches);
+        return isset($cardMatches[0]);
     }
 
 }

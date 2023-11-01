@@ -10,7 +10,7 @@ if (!function_exists('sendMessage')) {
         try {
             return Telegram::sendMessage($arr);
         } catch (TelegramResponseException $e) {
-
+//            devLog($e->getMessage());
             return "user has been blocked!";
         }
     }
@@ -226,4 +226,11 @@ function getState($chat_id)
         return null;
     }
     return \Illuminate\Support\Facades\Cache::get('state' . $chat_id);
+}
+function convertPersianToEnglish($string) {
+    $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+    $output= str_replace($persian, $english, $string);
+    return $output;
 }

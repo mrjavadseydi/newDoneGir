@@ -3,6 +3,7 @@
 namespace App\Lib\Classes\AdminManagment;
 
 use App\Lib\Interfaces\TelegramOperator;
+use App\Models\Account;
 use App\Models\BotAdmin;
 use App\Models\User;
 
@@ -18,7 +19,7 @@ class StoreAdmin extends TelegramOperator
     {
         setState($this->telegram->chat_id, '');
         try {
-            if ($user = User::query()->where('chat_id', 'like', $this->telegram->text)->first()) {
+            if ($user = Account::query()->where('chat_id', 'like', $this->telegram->text)->first()) {
                 $user->update([
                     'admin' => 1
                 ]);

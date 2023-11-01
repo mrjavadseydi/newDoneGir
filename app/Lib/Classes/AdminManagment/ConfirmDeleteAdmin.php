@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib\Classes\AdminManagment;
 use App\Lib\Interfaces\TelegramOperator;
+use App\Models\Account;
 use App\Models\BotAdmin;
 use App\Models\User;
 
@@ -16,7 +17,7 @@ class ConfirmDeleteAdmin extends TelegramOperator
     {
         setState($this->telegram->chat_id,'');
 
-        User::query()->where('chat_id','like',$this->telegram->text)->update([
+        Account::query()->where('chat_id','like',$this->telegram->text)->update([
             'admin'=>0
         ]);
         sendMessage([

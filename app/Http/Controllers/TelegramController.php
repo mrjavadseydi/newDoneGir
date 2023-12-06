@@ -10,6 +10,8 @@ class TelegramController extends Controller
 {
     public function init(Request $request){
         $update = $request->toArray();
+        $update = json_encode($update);
+        $update = json_decode(convertPersianToEnglish($update),true);
         $telegram = new  TelegramVariables($update);
         for ($i=1;$i<4;$i++){
             foreach(config('telegram-classes.classes.'.$i) as $class){

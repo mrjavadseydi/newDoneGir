@@ -43,13 +43,12 @@ class ShotManager extends TelegramOperator
             ]);
 
             ///subtract from group
-//            $group->update([
-//                'shot_count'=>$group->shot_count-1,
-//                'total_amount'=>$group->total_amount-($shot->amount*$shot->fee),
-//                'total_subtraction'=>$group->total_subtraction-$shot->subtraction,
-//                'view'=>$group->view-$shot->amount
-//
-//            ]);
+            $group->update([
+                'shot_count'=>$group->shot_count-1,
+                'total_amount'=>$group->total_amount-($shot->amount*$shot->fee),
+                'total_subtraction'=>$group->total_subtraction-$shot->subtraction,
+                'view'=>$group->view-$shot->amount
+            ]);
 
 
             $shot->delete();
@@ -64,12 +63,12 @@ class ShotManager extends TelegramOperator
                 'message_id'=>$this->telegram->message_id,
                 'text'=>"شات حذف شد و به لیست سیاه اضافه شد"
             ]);
-//            $group->update([
-//                'shot_count'=>$group->shot_count-1,
-//                'total_amount'=>$group->total_amount-($shot->amount*$shot->fee),
-//                'total_subtraction'=>$group->total_subtraction-$shot->subtraction,
-//                'view'=>$group->view-$shot->amount
-//            ]);
+            $group->update([
+                'shot_count'=>$group->shot_count-1,
+                'total_amount'=>$group->total_amount-($shot->amount*$shot->fee),
+                'total_subtraction'=>$group->total_subtraction-$shot->subtraction,
+                'view'=>$group->view-$shot->amount
+            ]);
 
 
             $shot->delete();

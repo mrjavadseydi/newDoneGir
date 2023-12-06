@@ -28,7 +28,14 @@ class CronMessageCommand extends Command
      */
     public function handle()
     {
-        $list = Cache::get('cron_list');
+        return Command::SUCCESS;
+        
+        if(Cache::has('cron_list')){
+            $list = Cache::get('cron_list');
+
+        }else{
+            $list = [];
+        }
 //        devLog($list);
         $current_min = date('i');
         if (Cache::has('cron_delete')) {
@@ -40,16 +47,16 @@ class CronMessageCommand extends Command
             }
         }
         $data = [];
-        foreach ($list as $chat_id => $val) {
+        foreach ($list as  $val) {
             if ($current_min % $val['min'] === 0) {
                 $res = copyMessage([
-                    'chat_id' => $chat_id,
-                    'from_chat_id' => $chat_id,
+                    'chat_id' => $val['chat_id'],
+                    'from_chat_id' =>  $val['chat_id'],
                     'message_id' => $val['message_id']
                 ]);
 //                if ($res['ok']){
                 $data[] = [
-                    'chat_id' => $chat_id,
+                    'chat_id' =>  $val['chat_id'],
                     'message_id' => $res['message_id']
                 ];
 //                }

@@ -39,7 +39,7 @@ class ShotExport implements FromCollection
                 $i + 1,
                 jdate($data->created_at)->format('Y/m/d'),
                 $data->user_chat_id,
-                implode("\n🆔 ", json_decode($data->pages)),
+                implode("\n🆔 ", json_decode($data->pages, true)),
                 number_format($data->fee * 10) . "ریال",
                 $data->amount . "K",
                 number_format($data->fee * 10 * $data->amount) . "ریال",

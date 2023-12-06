@@ -141,10 +141,10 @@ if (!function_exists('shotKey')) {
                 'text' => "⚠️حذف از لیست",
                 'callback_data' => "removeshot_" . $id
             ],
-            [
-                'text' => '🚫حذف و بلاک',
-                'callback_data' => "removeandblock_" . $id
-            ]
+//            [
+//                'text' => '🚫حذف و بلاک',
+//                'callback_data' => "removeandblock_" . $id
+//            ]
         ];
         return keyboard::make([
             'inline_keyboard' => [
@@ -233,4 +233,11 @@ function convertPersianToEnglish($string) {
 
     $output= str_replace($persian, $english, $string);
     return $output;
+}
+
+function remove_emojis($text) {
+    // Match Emoticons, Transport & Map Symbols, Miscellaneous Symbols and others
+    $regex = '/[\x{1F600}-\x{1F64F}|\x{1F300}-\x{1F5FF}|\x{1F680}-\x{1F6FF}|\x{1F700}-\x{1F77F}|\x{1F780}-\x{1F7FF}|\x{1F800}-\x{1F8FF}|\x{1F900}-\x{1F9FF}|\x{1FA00}-\x{1FA6F}|\x{1FA70}-\x{1FAFF}|\x{2600}-\x{26FF}|\x{2700}-\x{27BF}|\x{2300}-\x{23FF}|\x{2500}-\x{257F}|\x{20D0}-\x{20FF}|\x{2190}-\x{21FF}|\x{2B50}|\x{1F004}|\x{1F0CF}|\x{1F170}-\x{1F171}|\x{1F17E}-\x{1F17F}|\x{1F18E}|\x{1F191}-\x{1F19A}|\x{1F201}-\x{1F202}|\x{1F21A}|\x{1F22F}|\x{1F232}-\x{1F23A}|\x{1F250}-\x{1F251}|\x{1F300}-\x{1F321}|\x{1F324}-\x{1F393}|\x{1F396}-\x{1F397}|\x{1F399}-\x{1F39B}|\x{1F39E}-\x{1F3F0}|\x{1F3F3}-\x{1F3F5}|\x{1F3F7}-\x{1F4FD}|\x{1F4FF}-\x{1F53D}|\x{1F549}-\x{1F54E}|\x{1F550}-\x{1F567}|\x{1F56F}-\x{1F570}|\x{1F573}-\x{1F57A}|\x{1F587}|\x{1F58A}-\x{1F58D}|\x{1F590}|\x{1F595}-\x{1F596}|\x{1F5A4}-\x{1F5A5}|\x{1F5A8}|\x{1F5B1}-\x{1F5B2}|\x{1F5BC}|\x{1F5C2}-\x{1F5C4}|\x{1F5D1}-\x{1F5D3}|\x{1F5DC}-\x{1F5DE}|\x{1F5E1}|\x{1F5E3}|\x{1F5E8}|\x{1F5EF}|\x{1F5F3}|\x{1F5FA}-\x{1F64F}|\x{1F680}-\x{1F6C5}|\x{1F6CB}-\x{1F6D2}|\x{1F6D5}-\x{1F6D7}|\x{1F6E0}-\x{1F6E5}|\x{1F6E9}|\x{1F6EB}-\x{1F6EC}|\x{1F6F0}|\x{1F6F3}-\x{1F6FC}|\x{1F700}-\x{1F773}|\x{1F780}-\x{1F7D8}|\x{1F7E0}-\x{1F7EB}|\x{1F800}-\x{1F80B}|\x{1F810}-\x{1F847}|\x{1F850}-\x{1F859}|\x{1F860}-\x{1F887}|\x{1F890}-\x{1F8AD}|\x{1F8B0}-\x{1F8B1}|\x{1F900}-\x{1F90B}|\x{1F90D}-\x{1F93A}|\x{1F93C}-\x{1F945}|\x{1F947}-\x{1F978}|\x{1F97A}-\x{1F9CB}|\x{1F9CD}-\x{1F9FF}|\x{1FA60}-\x{1FA6D}|\x{1FA70}-\x{1FA74}|\x{1FA78}-\x{1FA7A}|\x{1FA80}-\x{1FA86}|\x{1FA90}-\x{1FAA8}|\x{1FAB0}-\x{1FAB6}|\x{1FAC0}-\x{1FAC2}|\x{1FAD0}-\x{1FAD6}]/u';
+
+    return preg_replace($regex, '', $text);
 }

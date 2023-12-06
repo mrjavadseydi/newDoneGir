@@ -7,7 +7,7 @@ use App\Models\BlockList;
 use App\Models\Shot;
 use App\Models\TagsBlockList;
 
-class GroupManager extends TelegramOperator
+class BlockManager extends TelegramOperator
 {
 
     public function initCheck()
@@ -15,83 +15,22 @@ class GroupManager extends TelegramOperator
         if (!$this->telegram->user->admin) {
             return false;
         }
-        $ex = [];
-        if ($this->telegram->message_type == "message") {
-            $ex = explode("\n", $this->telegram->text);
-        }
-        $ex1 = [];
-        if ($this->telegram->message_type == "message") {
-            $ex1 = explode(" ", $this->telegram->text);
-        }
-        if (
-            $this->telegram->group &&
-            $this->telegram->reply_to_message_id != "" &&
-            (
-            (
-                is_numeric($this->telegram->text) ||
-                (
-                    count($ex) == 2 && is_numeric($ex[0])
-                    && strpos($ex[1], '#') === 0
-                )
-                ||
-                (
-                    count($ex1) == 2 && is_numeric($ex1[0])
-                    && str_contains($ex1[1], '%')
-                )
 
-
-            )
-            )
-
-            && (!$this->cardNumExist())
-
-        ) {
-
-
-            $a = sendMessage([
-                'chat_id' => $this->telegram->chat_id,
-                'text' => '⚠️اطلاعات این پیام قابل مشاهده نیست لطفا روی شماره کارت ریپلای کنید'
-            ]);
-//            deleteMessage([
-//                'chat_id' => $this->telegram->chat_id,
-//                'message_id' => $a['message_id']
-//
-//            ]);
-            return false;
-        }
         return ($this->telegram->group && $this->telegram->reply_to_message_id != "" &&
-            $this->telegram->message_type == "message" && ($this->cardNumExist())
-            &&
-            ((is_numeric($this->telegram->text) ||
-            (count($ex) == 2 && is_numeric($ex[0]) && strpos($ex[1], '#') === 0)
-                || (
-                (
-                    count($ex1) == 2 && is_numeric($ex1[0])
-                    && str_contains($ex1[1], '%')
-                ))
-
-            )));
+            $this->telegram->message_type == "message" && $this->telegram->text == "#بلاک");
     }
 
     public function handel()
     {
-        $reply_text = $this->telegram->text;
-//        if ($this->telegram->from_id!="1389610583"){
-//            return sendMessage([
-//                'chat_id'=>$this->telegram->chat_id,
-//                'text'=>"در حال بروزرسانی لطفا حسابرسی انجام ندهید"
-//            ]);
-//        }
+
         if (isset($this->telegram->reply_to_message['text'])) {
             $this->telegram->reply_to_message['caption'] = $this->telegram->reply_to_message['text'];
         }
-
         $ex = explode("\n", $this->telegram->text);
         $group = \App\Models\Group::query()->where('chat_id', $this->telegram->chat_id)->first();
         if (!$group) {
             return false;
         }
-        $name_append = "";
         if (count($ex) == 2) {
             $this->telegram->text = $ex[0];
             $banner = str_replace("#", '', $ex[1]);
@@ -119,9 +58,6 @@ class GroupManager extends TelegramOperator
                 $this->telegram->text = $ex1[0];
             }
         }
-        ///remove anything and accept numbers only
-//        $this->telegram->text = preg_replace('/[^0-9]/', '', $this->telegram->text);
-
         $caption = remove_emojis($this->replaceCaption($this->telegram->reply_to_message['caption']));
 //        $caption = preg_replace('/[\x00-\x1F\x80-\x9F]/u', '', $caption);
 //        $caption = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $caption);
@@ -195,53 +131,22 @@ class GroupManager extends TelegramOperator
         $tags = $matches[0];
         ///remove duplicate tags
         $tags = array_unique($tags);
-        foreach ($tags as $tag) {
-            ///search for duplicates tags in database
-            $dup = Shot::query()->where('group_id', $group->id)->where('pages', 'like', '%"' . $tag . '"%')->first();
-            if ($dup) {
-                $warnings .= "⚠️ تگ " . $tag . " قبلا در این گروه استفاده شده است \n";
-            }
-//            $blocked = TagsBlockList::query()->where('tag','like', $tag)->first();
-//            if ($blocked) {
-//                $warnings .= "❌ تگ " . $tag . " در لیست سیاه ما موجود است \n";
-//            }
-            $text .= "🆔" . $tag . "\n";
-        }
         $text .= "\n";
         $text .= $warnings . "\n";
 
         $block_list = BlockList::query()->where('card_number', $cardNumber)->orWhere('shaba', $shaba)->first();
-        if ($block_list) {
-//            return sendMessage([
-//                'chat_id' => $this->telegram->chat_id,
-//                'text' => "این کارت یا شبا در لیست سیاه ما موجود است",
-//                'reply_to_message_id' => $this->telegram->message_id,
-//                'reply_markup' => unblockUser($block_list->id)
-//            ]);
-            $name_append = "بلاک شده ";
 
-        }
         $total_subtraction = $group->subtraction;
-        try {
-            $total = ($this->telegram->text * $price);
-
-        }catch (\Exception $e){
-            return 1;
-        }
+//        $total = ($this->telegram->text * $price);
         $sub_amount = 0;
 //        devLog($sub>0?" - ❗️ $sub% ($sub_amount) -":" " );
         if ($sub > 0) {
-            $new_total = round(((100 - $sub) * $total) / 100);
-            $sub_amount = ($total - $new_total);
-            $total_subtraction = $sub_amount + $total_subtraction;
-            $total = $new_total;
+//            $new_total = round(((100 - $sub) * $total) / 100);
+//            $sub_amount = ($total - $new_total);
+//            $total_subtraction = $sub_amount + $total_subtraction;
+//            $total = $new_total;
         }
-        $total = $total - $group->subtraction;
-
-        $text .= "📄 <b>Value</b> :<code> ( " . $this->telegram->text . " * " . $price . " ) - " . ($sub > 0 ? "❗️ $sub% ($sub_amount) -" : " ") . $group->subtraction . "</code>\n";
-        $text .= "💶 <b>Price</b> :<code>" . number_format($total) . "</code> Toman \n";
-        $text .= "💳 <b>Card Number</b> : \n <code>" . $cardNumber . "</code>\n";
-        $text .= "🏦 <b>Sheba Number</b>: <code>" . $shaba . "</code>\n";
+//        $total = $total - $group->subtraction;
         $new_caption = $caption;
         foreach ($tags_step_1 as $tag) {
             $new_caption = str_replace(strtoupper($tag), '', strtoupper($new_caption));
@@ -253,63 +158,20 @@ class GroupManager extends TelegramOperator
         $new_caption = str_replace(strtoupper($shaba), '', strtoupper($new_caption));
         ##remove empty lines from $new_caption
         $new_caption = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $new_caption);
-        $name = $name_append.trim($this->extractName(trim($new_caption)));
-        if ($group->show_name) {
-            $text .= "➖➖➖<b> Description </b>➖➖➖ \n";
-            $text .= $name . "\n";
-        }
-        //check there is a old shot with this message_id ?
-        $ex_shot = Shot::query()->where('group_id', $group->id)->where('message_id', $this->telegram->reply_to_message['message_id'])->first();
-        if($ex_shot){
-            //subtract from group
-            $group->update([
-                'shot_count'=>$group->shot_count-1,
-                'total_amount'=>$group->total_amount-($ex_shot->amount*$ex_shot->fee),
-                'total_subtraction'=>$group->total_subtraction-$ex_shot->subtraction,
-                'view'=>$group->view-$ex_shot->amount
-            ]);
-            deleteMessage([
-                'chat_id' => $this->telegram->chat_id,
-                'message_id' => $ex_shot->response_message_id
-            ]);
-            $ex_shot->delete();
-        }
-        try {
-            $shot = Shot::query()->create([
-                'group_id' => $group->id,
-                'user_chat_id' => $this->telegram->reply_to_message['from']['id'],
-                'pages' => json_encode($tags),
-                'card_number' => $cardNumber,
-                'shaba_number' => $shaba,
-                'card_name' =>$name,
-                'amount' => $this->telegram->text,
-                'subtraction' => $total_subtraction,
-                'fee' => $price,
-                'caption'=>$this->telegram->reply_to_message['caption'],
-                'total'=>$total,
-                'message_id' => $this->telegram->reply_to_message['message_id'],
-                'reply'=>$reply_text
-            ]);
-        }catch (\Exception $e){
-            return 1;
-        }
+        $name = trim($this->extractName(trim($new_caption)));
 
-        $a = sendMessage([
-            'chat_id' => $this->telegram->chat_id,
-            'text' => $text,
-            'parse_mode' => 'HTML',
-            'reply_to_message_id' => $this->telegram->message_id,
-            'reply_markup' => shotKey($shot->id)
-        ]);
-        $shot->update([
-            'response_message_id' => $a['message_id']
-        ]);
-        $group->shot_count++;
-        $group->total_amount += ($total);
-        $group->view = $group->view + $this->telegram->text;
-        $group->total_subtraction += $total_subtraction;
-        $group->save();
 
+        // todo: add to another block list
+        if (!empty($shaba)){
+            BlockList::query()->firstOrCreate(['shaba'=>$shaba],[
+                'card_number'=>$cardNumber
+            ]);
+
+        }
+        sendMessage([
+            'chat_id'=>$this->telegram->chat_id,
+            'text'=>" به لیست سیاه اضافه شد ."
+        ]);
     }
 
     public function extractName($text)

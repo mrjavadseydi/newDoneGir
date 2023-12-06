@@ -10,6 +10,8 @@ return[
             \App\Lib\Classes\Start::class,
             ShotManager::class,
             UnblockUser::class,
+            \App\Lib\Classes\BlockManager::class,
+
             GroupManager::class,
             \App\Lib\Classes\GroupCommands::class,
         ],

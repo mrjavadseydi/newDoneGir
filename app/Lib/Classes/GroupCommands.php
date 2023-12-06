@@ -7,6 +7,7 @@ use App\Lib\Interfaces\TelegramOperator;
 use App\Models\BlockList;
 use App\Models\Group;
 use App\Models\Shot;
+use App\Models\TagsBlockList;
 use Illuminate\Support\Facades\Cache;
 use Maatwebsite\Excel\Facades\Excel;
 use Morilog\Jalali\Jalalian;
@@ -27,6 +28,7 @@ class GroupCommands extends TelegramOperator
         "#ثبت",
         "#توقف",
         "#اکسل",
+        "#انبلاک",
 
     ];
 
@@ -74,10 +76,10 @@ class GroupCommands extends TelegramOperator
                     $this->invoice();
                     break;
                 case "#ملی":
-                    $this->meli();
+                    $this->meli($command[1] ?? 0);
                     break;
                 case "#پاسارگاد":
-                    $this->pasargard();
+                    $this->pasargard($command[1] ?? 0);
                     break;
                 case "#اکسل":
                     $this->excel();
@@ -103,6 +105,18 @@ class GroupCommands extends TelegramOperator
 
                 case '#ثبت':
                     $this->insertCron($command[1]);
+                    break;
+                case '#انبلاک':
+                    try {
+                        BlockList::query()->where('shaba','like',$command[1])->delete();
+                        sendMessage([
+                            'chat_id' => $this->telegram->chat_id,
+                            'text' => "تگ ". $command[1] ." از لیست سیاه حذف شد"
+                        ]);
+                    }catch (\Exception $e){
+
+                    }
+
                     break;
                 case '#توقف':
                     $this->stopCron();
@@ -174,6 +188,7 @@ class GroupCommands extends TelegramOperator
         $group = Group::query()->where('chat_id', $this->telegram->chat_id)->first();
         $shots = Group::query()->where('chat_id', $this->telegram->chat_id)->first()->shots;
         $view_count = Group::query()->where('chat_id', $this->telegram->chat_id)->first()->shots->sum('amount');
+
         $text = "📉 صورتحساب";
         $text .= "\n\n";
         $text .= "💠 تعداد شات ها : " . $group->shot_count;
@@ -184,7 +199,7 @@ class GroupCommands extends TelegramOperator
 //        $text .= "\n\n";
 //        $text .= "💠 مجموع کسورات : " . $group->total_subtraction . "ریال ";
         $text .= "\n\n";
-        $text .= "💠 مجموع مبلغ پرداختی : " . number_format(($view_count * $group->default_price) - $shots->count() * $group->subtraction) . "تومان ";
+        $text .= "💠 مجموع مبلغ پرداختی : " . number_format(($view_count * $group->default_price) - $group->total_subtraction) . "تومان ";
         $text .= "\n\n";
         $text .= "💠 نام گروه :" . $this->telegram->update["message"]["chat"]["title"];
         $text .= "\n\n";
@@ -197,17 +212,14 @@ class GroupCommands extends TelegramOperator
         ]);
     }
 
-    private function meli()
+    private function meli($divisor = 0)
     {
         $a = sendMessage([
             'chat_id' => $this->telegram->chat_id,
             'text' => "در حال ایجاد فایل"
         ]);
         $group = Group::query()->where('chat_id', $this->telegram->chat_id)->first();
-//        devLog($group->id);
         $file = "";
-//        $rand = random_int(10000, 50000);
-
         foreach ($group->shots as $i => $shot) {
             if (BlockList::query()->where('card_number', $shot->card_number)->orWhere('shaba', $shot->shaba_number)->first()) {
                 continue;
@@ -218,15 +230,36 @@ class GroupCommands extends TelegramOperator
             $shaba = strtoupper($shot->shaba_number);
             $file .= "$amount,$shaba,$b,{$shot->card_name}" . PHP_EOL;
         }
-        file_put_contents(public_path('meli.txt'), $file);
-        sendDocument([
-            'chat_id' => $this->telegram->chat_id,
-            'document' => InputFile::create(public_path('meli.txt')),
-            'caption' => "💵فایل ارسال گروهی بانک ملی
-نام گروه :" . $this->telegram->update["message"]["chat"]["title"] . "\n" .
-                "🕰 زمان  : " . Jalalian::forge('today')->format('%A, %d %B')
+        //remove duplicate line
+        $file = implode(PHP_EOL, array_unique(explode(PHP_EOL, $file)));
 
-        ]);
+        $file = str_replace(',,',',توضیحات,',$file);
+        if ($divisor==0){
+            file_put_contents(public_path('meli.txt'), $file);
+
+            sendDocument([
+                'chat_id' => $this->telegram->chat_id,
+                'document' => InputFile::create(public_path('meli.txt')),
+                'caption' => "💵فایل ارسال گروهی بانک ملی
+نام گروه :" . $this->telegram->update["message"]["chat"]["title"] . "\n" .
+                    "🕰 زمان  : " . Jalalian::forge('today')->format('%A, %d %B')
+
+            ]);
+        }else{
+            $file = explode(PHP_EOL,$file);
+            $file = array_chunk($file,$divisor);
+            foreach ($file as $i=>$f) {
+                file_put_contents(public_path('meli'.$i.'.txt'), implode(PHP_EOL, $f));
+                sendDocument([
+                    'chat_id' => $this->telegram->chat_id,
+                    'document' => InputFile::create(public_path('meli'.$i.'.txt')),
+                    'caption' => "💵فایل ارسال گروهی بانک ملی
+نام گروه :" . $this->telegram->update["message"]["chat"]["title"] . "\n" .
+                        "🕰 زمان  : " . Jalalian::forge('today')->format('%A, %d %B')
+                ]);
+            }
+        }
+
         deleteMessage([
             'chat_id' => $this->telegram->chat_id,
             'message_id' => $a['message_id']
@@ -234,7 +267,7 @@ class GroupCommands extends TelegramOperator
 //        devLog($a);
     }
 
-    private function pasargard()
+    private function pasargard($divisor = 0)
     {
         $a = sendMessage([
             'chat_id' => $this->telegram->chat_id,
@@ -243,6 +276,13 @@ class GroupCommands extends TelegramOperator
         $group = Group::query()->where('chat_id', $this->telegram->chat_id)->first();
         $file = "";
         $rand = random_int(10000, 500000);
+        $remove_chars = [',', '.', '@', '_', '-', '/' ,":",'"',"'",'◾',"\n",'•',
+            '=','?','؟','!','!','،','؛','«','»','٬','٫','[',']','+','#','-','  ','   ','  ',
+            '️ ️',' ',' ‌','‌‌','‌ ‌','‌ ','—','﷽','‏','°',')','(','1','2','3','4','5','6','7','8','9','0','*','&','^','%','$',
+            '@','!','~','`','|','\\','{','}','<','>','؟','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛','؛',
+            '۱','۲','۳','۴','۵','۶','۷','۸','۹','۰','١','٢','٣','٤','٥','٦','٧','٨','٩','٠','٪','٫','٬','٭','۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','۰','۱','۲','۳','۴','۵','۶',
+            '۷','۸','۹','۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٪'
+        ];
         foreach ($group->shots as $i => $shot) {
             if (BlockList::query()->where('card_number', $shot->card_number)->orWhere('shaba', $shot->shaba_number)->first()) {
                 continue;
@@ -250,16 +290,47 @@ class GroupCommands extends TelegramOperator
             $amount = (($shot->fee * $shot->amount) - $shot->subtraction) * 10;
             $b = $i + 1;
             $shaba = str_replace('IR', '', strtoupper($shot->shaba_number));
-            $file .= "$shaba,$amount,$rand,$b,{$shot->card_name}," . PHP_EOL;
+            $name = $shot->card_name;
+            $name = trim(str_replace($remove_chars, '',$name));
+            $file .= "$shaba,$amount,$rand,$b,$name," . PHP_EOL;
         }
-        file_put_contents(public_path('pasargad.txt'), $file);
-        sendDocument([
-            'chat_id' => $this->telegram->chat_id,
-            'document' => InputFile::create(public_path('pasargad.txt')),
-            'caption' => "💵فایل ارسال گروهی بانک پاسارگاد
-نام گروه :" . $this->telegram->update["message"]["chat"]["title"] . "\n" .
-                "🕰 زمان  : " . Jalalian::forge('today')->format('%A, %d %B')
-        ]);
+        ///
+        $file = remove_emojis(preg_replace('/[\x{1F600}-\x{1F64F}]/u', '', $file));
+        /// remove english char ecsept IR
+        $file = preg_replace('/[a-zA-Z]/', '', $file);
+        ///convert persian number to english
+        $file = convertPersianToEnglish($file);
+        //remove . _ / \ ecsept ,
+        $file = preg_replace('/[._\/\\\]/', '', $file);
+
+        //remove duplicate line
+        $file = implode(PHP_EOL, array_unique(explode(PHP_EOL, $file)));
+
+        $file = str_replace(',,',',توضیحات,',$file);
+        if ($divisor==0){
+            file_put_contents(public_path('pasargad.txt'), $file);
+            sendDocument([
+                'chat_id' => $this->telegram->chat_id,
+                'document' => InputFile::create(public_path('pasargad.txt')),
+                'caption' => "💵فایل ارسال گروهی بانک پاسارگاد
+نام گروه " . $this->telegram->update["message"]["chat"]["title"] . "\n" .
+                    "🕰 زمان  : " . Jalalian::forge('today')->format('%A, %d %B')
+            ]);
+        }else{
+            $file = explode(PHP_EOL,$file);
+            $file = array_chunk($file,$divisor);
+            foreach ($file as $i=>$f) {
+                file_put_contents(public_path('pasargad'.$i.'.txt'), implode(PHP_EOL, $f));
+                sendDocument([
+                    'chat_id' => $this->telegram->chat_id,
+                    'document' => InputFile::create(public_path('pasargad'.$i.'.txt')),
+                    'caption' => "💵فایل ارسال گروهی بانک پاسارگاد
+نام گروه " . $this->telegram->update["message"]["chat"]["title"] . "\n" .
+                        "🕰 زمان  : " . Jalalian::forge('today')->format('%A, %d %B')
+                ]);
+            }
+        }
+
         deleteMessage([
             'chat_id' => $this->telegram->chat_id,
             'message_id' => $a['message_id']
@@ -308,7 +379,7 @@ class GroupCommands extends TelegramOperator
         if (Cache::has('cron_list')) {
             $list = Cache::get('cron_list');
         }
-        $list[$this->telegram->chat_id] = [
+        $list[] = [
             'chat_id' => $this->telegram->chat_id,
             'message_id' => $copy_id,
             'min' => $min
